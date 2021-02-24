@@ -1,0 +1,54 @@
+begin model
+
+begin parameters
+  L0 1000 # Initial number of L molecules
+  R0 20   # Initial number of R molecules
+  kp1 1   # Bimolecular rate constant for L-R binding (1/# 1/s)
+  km1 1   # Unimolecular rate constant for L-R unbinding (1/s)
+  p1 1
+  d1 0.1
+end parameters
+
+
+begin molecule types
+  L(r,d)
+  R(l,Y~0~P)
+end molecule types
+
+begin species
+  L(r,d) L0
+  R(l,Y~0) R0
+end species
+
+begin compartments
+  EC  3  vol_EC
+  PM  2  sa_PM*width    EC
+  CP  3  vol_CP         PM
+  EM  2  sa_EM*width    CP
+  EN  3  vol_EN         EM
+end compartments
+
+begin reaction rules
+  L(r) + R(l) <-> L(r!1).R(l!1) kp1, km1
+  R(l!+,Y~0) -> R(l!+,Y~P) p1
+  R(Y~P) -> R(Y~0) d1
+  L(d) + L(d)  <->  L(d!1).L(d!1) kp_LL,km_LL
+  @PM:R().R() ->  @EM:R().R()  k_r_endo
+  @EM:R()  ->  @PM:R()   k_recycle
+end reaction rules
+
+begin observables
+  Molecules L_tot   L()
+  Molecules L_free  L(r)
+  Molecules L_bound L(r!1).R(l!1)
+  Molecules R_phospho_unbound R(Y~P)
+  Molecules R_phospho R(Y~P!?)
+  
+  Species    R_Dimers_PM   @PM:R.R
+  Species    R_Dimers_EM   @EM:R.R
+end observables
+
+end model
+# generate_network({overwrite=>1})}
+
+simulate({method=>"ode",t_end=>5,n_steps=>120})
